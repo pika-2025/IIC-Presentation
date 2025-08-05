@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradient Descent: The Optimization Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <script type="text/javascript" async
+      src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <style>
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: 'Inter', 'Google Sans', Arial, sans-serif;
+            background: linear-gradient(130deg, #171a23 0%, #242745 100%);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            color: #f5f7fa;
+        }
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0; left: 0;
+            background: transparent;
+        }
+        .slide-viewer {
+            width: 100vw;
+            height: 100vh;
+            background: transparent;
+            overflow: hidden;
+        }
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0; left: 0;
+            opacity: 0;
+            padding: 3vh 6vw;
+            box-sizing: border-box;
+            transition: opacity 0.5s, transform 0.5s;
+            transform: translateX(40px);
+        }
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .slide.prev {
+            transform: translateX(-40px);
+        }
+        .slide-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-width: 1350px;
+            margin: 0 auto;
+        }
+        /* Slide backgrounds */
+        .title-slide {
+            background: linear-gradient(120deg, #1e2232 0%, #22273b 100%);
+            color: #DBEAFE;
+            text-align: center;
+            align-items: center;
+            position: relative;
+        }
+        .content-slide {
+            background: linear-gradient(120deg, #212332 0%, #1a1e2e 80%);
+            color: #F6F8FC;
+            position: relative;
+        }
+        .conclusion-slide {
+            background: linear-gradient(115deg, #191a22 0%, #232946 100%);
+            color: #E5E9F1;
+            position: relative;
+        }
+        /* Titles */
+        h1 {
+            font-family: 'Inter', 'Google Sans', Arial, sans-serif;
+            font-size: clamp(4rem, 9vw, 6.2rem);
+            font-weight: 800;
+            margin: 0 0 2.5rem 0;
+            letter-spacing: -0.035em;
+            background: linear-gradient(120deg, #38bdf8, #a5b4fc, #f5f7fa);
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            line-height: 1.04;
+                }
+
+        h2 {
+            font-size: clamp(4.2rem, 7vw, 6.2rem);
+            font-family: 'Inter', 'Google Sans', Arial, sans-serif;
+            font-weight: 700;
+            margin: 0 0 2.6rem 0;
+            color: #a5b4fc;
+            letter-spacing: -0.02em;
+            text-align: center;
+            line-height: 1.1;
+            z-index: 1;
+        }
+
+        h3 {
+            font-size: clamp(1.6rem, 3vw, 2.1rem);
+            font-family: 'Inter', 'Google Sans', Arial, sans-serif;
+            font-weight: 600;
+            margin-bottom: 1.4rem;
+            color: #60A5FA;
+            line-height: 1.18;
+        }
+
+        .slide-content > h1,
+        .slide-content > h2,
+        .slide-content > h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (max-width: 800px) {
+            h1 { font-size: 2.6rem!important; }
+            h2 { font-size: 1.55rem!important; }
+            h3 { font-size: 1.22rem!important; }
+        }
+
+        @media (max-width: 550px) {
+            h1 { font-size: 1.65rem!important; }
+            h2 { font-size: 1.05rem!important; }
+            h3 { font-size: 0.9rem!important; }
+        }
+
+        p, .bullet-point, .detail-text, .emphasis-text {
+            font-size: 1.16rem;
+            line-height: 1.62;
+            font-weight: 400;
+            color: #f4f7fa;
+        }
+        .subtitle {
+            font-size: 1.62rem;
+            font-weight: 400;
+            color: #a5b4fc;
+            margin-bottom: 2.3rem;
+        }
+        .author-info {
+            margin-top: 3.1rem;
+            font-size: 1.08rem;
+            color: #93c5fd;
+            font-weight: 500;
+        }
+        /* Grid structure */
+        .slide-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3.5rem;
+            align-items: center;
+            width: 100%;
+        }
+        .slide-grid.single-column {
+            grid-template-columns: 1fr;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .slide-grid.three-col {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        /* Visuals and image */
+        .image-container {
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .slide-image, .animated-svg {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            background: #232946;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.09);
+        }
+        /* Cards and boxes */
+        .card, .optimizer-card {
+            background: linear-gradient(120deg, #232946 0%, #181a22 100%);
+            color: #f3f6fa;
+            border-radius: 13px;
+            padding: 2.1rem 2.1rem 2rem 2.1rem;
+            box-shadow: 0 4px 24px rgba(18,28,40,0.2);
+            border: 1px solid #373e65;
+        }
+        .optimizer-card {
+            border-left: 5px solid #38bdf8;
+        }
+        .pros {
+            color: #6EE7B7;
+            font-weight: 600;
+            font-size: 1.13rem;
+        }
+        .cons {
+            color: #FCA5A5;
+            font-weight: 600;
+            font-size: 1.13rem;
+        }
+        .warning-box {
+            background: linear-gradient(120deg, #401d28 0%, #3b1d33 100%);
+            color: #fca5a5;
+            border-left: 5px solid #ef4444;
+            border-radius: 8px;
+            padding: 1.5rem 1.5rem 1.2rem 1.5rem;
+            margin-top: 1.2rem;
+        }
+        .success-box {
+            background: linear-gradient(120deg, #193526 0%, #234b2b 100%);
+            color: #8FFCDE;
+            border-left: 5px solid #22c55e;
+            border-radius: 8px;
+            padding: 1.5rem 1.5rem 1.2rem 1.5rem;
+            margin-top: 1.2rem;
+        }
+        .info-box {
+            background: linear-gradient(120deg, #23334d 0%, #1b263b 100%);
+            color: #67e8f9;
+            border-left: 5px solid #38bdf8;
+            border-radius: 8px;
+            padding: 1.5rem 1.5rem 1.2rem 1.5rem;
+            margin-top: 1.2rem;
+        }
+        .formula-box {
+            background: linear-gradient(120deg, #232946 0%, #293858 100%);
+            border-radius: 13px;
+            border: 1.4px solid #404c61;
+            padding: 1.8rem 1.4rem;
+            font-size: 1.38rem;
+            font-weight: 700;
+            color: #F8FAFC;
+            font-family: 'Inter', 'Google Sans', Arial, sans-serif;
+            margin: 2.2rem 0 2.2rem 0;
+            box-shadow: 0 2px 10px rgba(20,30,42,0.08);
+        }
+        /* Bullets and highlights */
+        .bullet-point {
+            display: flex;
+            align-items: flex-start;
+            margin: 1.2rem 0;
+            font-size: 1.13rem;
+            color: #F4F7FA;
+        }
+        .bullet-point::before {
+            content: "•";
+            color: #38bdf8;
+            font-size: 1.24rem;
+            font-weight: 700;
+            margin-right: 1.2rem;
+            line-height: 1.22;
+        }
+        .highlight {
+            color: #38bdf8;
+            font-weight: 600;
+        }
+        /* Navigation */
+        .navigation-bar {
+            position: fixed;
+            bottom: 3vh;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #171820ee;
+            border-radius: 26px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 1000;
+            border: 1px solid #31324f;
+            padding: 10px 22px;
+        }
+        .nav-button {
+            background: transparent;
+            border: none;
+            color: #f1f5f9;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background 0.22s;
+        }
+        .nav-button:hover:not(:disabled) {
+            background: rgba(56,189,248,0.16);
+            color: #38bdf8;
+        }
+        .nav-button:disabled {
+            color: #62646d;
+            cursor: not-allowed;
+        }
+        .slide-counter {
+            color: #e5edff;
+            font-size: 1.03rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            min-width: 48px;
+            text-align: center;
+            user-select: none;
+        }
+        /* Responsive tweaks */
+        @media (max-width: 1024px) {
+            h1 { font-size: 2.1rem; }
+            h2 { font-size: 1.42rem; }
+            .slide { padding: 2vh 3vw;}
+            .slide-grid, .comparison-grid { gap: 2rem; }
+        }
+        @media (max-width: 800px) {
+            .slide-grid { grid-template-columns: 1fr; gap: 2rem; }
+            .slide { padding: 1.5vh 1vw;}
+            .navigation-bar { font-size: 0.91rem;}
+        }
+        @media (max-width: 500px) {
+            .slide, .slide-content { padding-left: 4px; padding-right: 4px; }
+            h1 { font-size: 1.38rem;}
+            h2 { font-size: 0.96rem;}
+        }
+    </style>
+</head>
+<body>
+<div class="presentation-container" id="presentationContainer">
+    <div class="slide-viewer" id="slideViewer">
+
+        <!-- Slide 1: Title -->
+        <div class="slide title-slide active" id="slide1">
+            <div class="slide-content">
+                <h1>Gradient Descent</h1>
+                <p class="subtitle">The Optimization Engine</p>
+                <div class="author-info">
+                    <p><strong>PIYUSH KANT</strong></p>
+                    <p>22F3002119</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Introduction -->
+        <div class="slide content-slide" id="slide2">
+            <div class="slide-content">
+                <h2>Why Gradient Descent?</h2>
+                <div class="slide-grid">
+                    <div>
+                        <div class="bullet-point">At its heart, training a machine learning model is all about optimization.</div>
+                        <div class="bullet-point">We need an efficient way to tweak the model's parameters to minimize error and improve predictions.</div>
+                        <div class="bullet-point">Gradient Descent is the foundational algorithm that powers this process, guiding our model to optimal performance.</div>
+                    </div>
+                    <div class="image-container">
+                        <svg class="animated-svg" viewBox="0 0 300 200">
+                            <defs>
+                                <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:1" />
+                                    <stop offset="60%" style="stop-color:#a5b4fc;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#fefefe;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M20 180 Q 80 20, 150 100 Q 220 50, 280 80" stroke="#31384a" stroke-width="3" fill="none" />
+                            <path d="M20 180 Q 80 20, 150 100 Q 220 50, 280 80" stroke="url(#pathGradient)" stroke-width="4.5" fill="none" />
+                            <circle cx="20" cy="180" r="7" fill="#38bdf8"></circle>
+                            <text x="170" y="55" font-family="Inter" font-size="16" fill="#A5B4FC" font-weight="700">Optimal Point</text>
+                            <circle cx="280" cy="80" r="10" fill="#4ade80" opacity="0.8"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Loss Landscape (visual removed) -->
+        <div class="slide content-slide" id="slide3">
+            <div class="slide-content">
+                <h2>The Landscape of Loss</h2>
+                <div class="slide-grid">
+                    <div>
+                        <div class="bullet-point">Imagine a vast, hilly landscape. This is our Loss Function. The height at any point represents the model's error.</div>
+                        <div class="bullet-point">Our goal is to find the lowest valley in this landscape.</div>
+                        <div class="bullet-point">The Gradient is a vector that points in the direction of the steepest ascent.</div>
+                        <div class="bullet-point">To find the minimum, we take steps in the opposite direction of the gradient.</div>
+                        <!-- (Paste your own image in PPTX here) -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Vanilla Gradient Descent -->
+        <div class="slide content-slide" id="slide4">
+            <div class="slide-content">
+                <h2>The First Step: Vanilla GD</h2>
+                <div class="formula-box">
+                    <strong>\( \theta_{new} = \theta_{old} - \eta \nabla L(\theta) \)</strong>
+                </div>
+                <div class="slide-grid">
+                    <div>
+                        <p class="emphasis-text" style="color: #7dd3fc;">Intuition: Take small, consistent steps downhill.</p>
+                        <div class="bullet-point"><strong>\( \theta \)</strong>: Model's parameters (weights)</div>
+                        <div class="bullet-point"><strong>\( \eta \)</strong>: Learning rate (controls step size)</div>
+                        <div class="bullet-point"><strong>\( \nabla L(\theta) \)</strong>: Gradient of the loss function</div>
+                        <div class="warning-box">
+                            <p class="cons"><strong>Challenge:</strong> Can be very slow on flat areas of the loss landscape.</p>
+                        </div>
+                    </div>
+                    <div class="image-container">
+                        <svg class="animated-svg" viewBox="0 0 300 200">
+                            <defs>
+                                <linearGradient id="gradientPath" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#a5b4fc;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M 20 180 C 80 20, 220 20, 280 180" stroke="#31384a" stroke-width="3" fill="none"/>
+                            <circle cx="30" cy="165" r="7" fill="url(#gradientPath)">
+                                <animateMotion dur="6s" repeatCount="indefinite" 
+                                    path="M 0 0 C 60 -140, 200 -140, 240 0" />
+                            </circle>
+                            <text x="120" y="195" font-family="Inter" font-size="11" fill="#38bdf8" font-weight="500">Minimum</text>
+                            <circle cx="150" cy="180" r="9" fill="#4ade80" opacity="0.8"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Variants -->
+        <div class="slide content-slide" id="slide5">
+            <div class="slide-content">
+                <h2>One Size Doesn't Fit All</h2>
+                <div class="slide-grid three-col">
+                    <div class="optimizer-card" style="border-left-color: #f59e0b;">
+                        <h3 style="color: #FBBF24;">Batch GD</h3>
+                        <p class="detail-text">Calculates the gradient using the <strong>entire dataset</strong> for a single update.</p>
+                        <div class="warning-box">
+                            <p class="cons"> Accurate but extremely slow and memory-intensive for large datasets.</p>
+                        </div>
+                    </div>
+                    <div class="optimizer-card" style="border-left-color: #ef4444;">
+                        <h3 style="color: #ef4444;">Stochastic GD (SGD)</h3>
+                        <p class="detail-text">Updates parameters using just <strong>one data point</strong> at a time.</p>
+                        <div class="warning-box">
+                            <p class="cons"> Fast but noisy. The path to minimum is erratic and can oscillate.</p>
+                        </div>
+                    </div>
+                    <div class="optimizer-card" style="border-left-color: #22c55e;">
+                        <h3 style="color: #22c55e;">Mini-Batch GD</h3>
+                        <p class="detail-text">A compromise: updates parameters using a <strong>small batch</strong> of data.</p>
+                        <div class="success-box">
+                            <p class="pros"> The standard choice. Balances accuracy and computational efficiency.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Momentum (visual removed) -->
+        <div class="slide content-slide" id="slide6">
+            <div class="slide-content">
+                <h2>Gaining Momentum</h2>
+                <div class="slide-grid">
+                    <div>
+                        <div style="margin-bottom: 3rem;">
+                            <h3 style="color: #7c3aed;">Momentum:</h3>
+                            <p class="detail-text">
+                                Imagine a ball rolling down a hill. It picks up speed and doesn't get stuck in small bumps.
+                                This method adds a fraction of the previous update to the current one, helping to accelerate in the right direction.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 style="color: #7c3aed;">Nesterov (NAG):</h3>
+                            <p class="detail-text">
+                                A smarter momentum. It "looks ahead" by calculating the gradient at a future approximate position, allowing it to slow down earlier and avoid overshooting the minimum.
+                            </p>
+                        </div>
+                        <!-- (Paste your own image in PPTX here) -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: AdaGrad -->
+        <div class="slide content-slide" id="slide7">
+            <div class="slide-content">
+                <h2>Adaptive Learning Rates</h2>
+                <p class="section-subtitle" style="color: #38bdf8;">Different learning rates for different parameters</p>
+                <div class="slide-grid single-column">
+                    <div class="card">
+                        <h3 style="color: #F87171;">AdaGrad</h3>
+                        <p class="formula-label">"Adaptive Gradient"</p>
+                        <div class="formula-box">
+                            \( w_{t+1} = w_t - \frac{\eta}{\sqrt{v_t + \epsilon}} \nabla w_t \)
+                        </div>
+                        <div class="bullet-point">Gives frequent parameters a smaller learning rate and infrequent (sparse) parameters a larger one</div>
+                        <div class="bullet-point">Excellent for sparse data, like in NLP</div>
+                        <div class="warning-box">
+                            <p class="cons"><strong>Downside:</strong> The learning rate can decay too aggressively and become infinitesimally small, stopping learning altogether.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: RMSprop & AdaDelta -->
+        <div class="slide content-slide" id="slide8">
+            <div class="slide-content">
+                <h2>Fixing the Decay</h2>
+                <div class="slide-grid">
+                    <div class="card" style="border-left: 5px solid #38bdf8;">
+                        <h3 style="color: #38bdf8;">RMSprop</h3>
+                        <p class="detail-text">Fixes AdaGrad's rapid decay by using an <strong>exponentially decaying average</strong> of squared gradients instead of summing them.</p>
+                        <p class="detail-text">This prevents the denominator from growing endlessly, keeping learning going.</p>
+                        <div class="formula-box" style="margin-top: 2.2rem;">
+                            \( v_t = \beta v_{t-1} + (1-\beta)(\nabla w_t)^2 \)
+                        </div>
+                    </div>
+                    <div class="card" style="border-left: 5px solid #06b6d4;">
+                        <h3 style="color: #06b6d4;">AdaDelta</h3>
+                        <p class="detail-text">An extension of RMSprop that <strong>eliminates the need to set a base learning rate</strong> manually.</p>
+                        <p class="detail-text">It uses a moving average of parameter updates in the numerator.</p>
+                        <div class="formula-box" style="margin-top: 2.2rem;">
+                            \( \Delta w_t = -\frac{\sqrt{u_{t-1}+\epsilon}}{\sqrt{v_t+\epsilon}}\nabla w_t \)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Adam (visual removed) -->
+        <div class="slide content-slide" id="slide9">
+            <div class="slide-content">
+                <h2>Adam: Best of Both Worlds</h2>
+                <div class="slide-grid">
+                    <div>
+                        <p class="emphasis-text" style="color: #A5B4FC;">"Adaptive Moment Estimation" is often the default, go-to optimizer.</p>
+                        <p class="detail-text" style="margin-bottom: 2rem;">It combines the ideas of:</p>
+                        <div class="bullet-point"><strong style="color: #38bdf8;">Momentum:</strong> Uses a moving average of the gradient (the "first moment")</div>
+                        <div class="bullet-point"><strong style="color: #38bdf8;">RMSprop:</strong> Uses a moving average of the squared gradient (the "second moment")</div>
+                        <div class="info-box">
+                            <p class="detail-text" style="margin: 0;">This makes it efficient, robust, and well-suited for a wide range of problems.</p>
+                        </div>
+                        <!-- (Paste your own image in PPTX here) -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Conclusion -->
+        <div class="slide conclusion-slide" id="slide10">
+            <div class="slide-content">
+                <h2 style="text-align: center;">Conclusion & Takeaways</h2>
+                <div style="max-width: 950px; margin: 0 auto;">
+                    <div class="bullet-point" style="font-size: 1.34rem; margin: 2.8rem 0;">We've journeyed from a simple downhill walk (Vanilla GD) to a sophisticated, adaptive algorithm (Adam).</div>
+                    <div class="bullet-point" style="font-size: 1.34rem; margin: 2.8rem 0;">Each new optimizer was developed to solve a specific problem: speed, noise, sparse data, or learning rate decay.</div>
+                    <div class="bullet-point" style="font-size: 1.34rem; margin: 2.8rem 0;">Choosing the right optimizer can significantly impact training speed and model performance.</div>
+                </div>
+                <div style="text-align: center; margin-top: 4.3rem;">
+                    <p style="font-size: 2.7rem; font-weight: 700; margin-bottom: 1.2rem; background: linear-gradient(45deg, #22c55e, #06b6d4, #8b5cf6); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Thank You!</p>
+                    <p style="font-size: 1.5rem; opacity: 0.9;">Questions?</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Navigation -->
+<div class="navigation-bar">
+    <button id="prevBtn" class="nav-button" title="Previous slide">
+        <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+    <span class="slide-counter" id="slideCounter">1 / 10</span>
+    <button id="nextBtn" class="nav-button" title="Next slide">
+        <span class="material-symbols-outlined">chevron_right</span>
+    </button>
+    <button id="fullscreenBtn" class="nav-button" title="Toggle fullscreen">
+        <span class="material-symbols-outlined">fullscreen</span>
+    </button>
+</div>
+<script>
+    let currentSlide = 1;
+    const totalSlides = 10;
+    const slideCounter = document.getElementById('slideCounter');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const presentationContainer = document.getElementById('presentationContainer');
+
+    function showSlide(slideNumber) {
+        document.querySelectorAll('.slide').forEach((slide, idx) => {
+            slide.classList.remove('active', 'prev');
+            if (idx < slideNumber - 1) slide.classList.add('prev');
+        });
+        document.getElementById(`slide${slideNumber}`).classList.add('active');
+        slideCounter.textContent = `${slideNumber} / ${totalSlides}`;
+        prevBtn.disabled = slideNumber === 1;
+        nextBtn.disabled = slideNumber === totalSlides;
+        // Re-render MathJax
+        if (typeof MathJax !== 'undefined' && MathJax.Hub)
+            MathJax.Hub.Queue(["Typeset", MathJax.Hub, `slide${slideNumber}`]);
+    }
+    prevBtn.addEventListener('click', () => { if (currentSlide > 1) showSlide(--currentSlide); });
+    nextBtn.addEventListener('click', () => { if (currentSlide < totalSlides) showSlide(++currentSlide); });
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            presentationContainer.requestFullscreen().then(() =>
+                fullscreenBtn.querySelector('.material-symbols-outlined').textContent = 'fullscreen_exit');
+        } else {
+            document.exitFullscreen().then(() =>
+                fullscreenBtn.querySelector('.material-symbols-outlined').textContent = 'fullscreen');
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextBtn.click();}
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); prevBtn.click();}
+        else if (e.key === 'f' || e.key === 'F11') { e.preventDefault(); fullscreenBtn.click();}
+        else if (e.key === 'Escape' && document.fullscreenElement) fullscreenBtn.click();
+    });
+    let startX = 0, endX = 0;
+    document.addEventListener('touchstart', e => { startX = e.changedTouches[0].screenX; });
+    document.addEventListener('touchend', e => { endX = e.changedTouches[0].screenX; if (startX - endX > 50) nextBtn.click(); else if (endX - startX > 50) prevBtn.click(); });
+    showSlide(currentSlide);
+    document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement)
+            fullscreenBtn.querySelector('.material-symbols-outlined').textContent = 'fullscreen';
+    });
+</script>
+</body>
+</html>
